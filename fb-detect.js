@@ -302,7 +302,17 @@
 
   /** Convenience: visible text of an element, already normalized. */
   function readLabel(el, env) {
-    return norm(visibleText(el, env));
+    var txt = visibleText(el, env);
+    if (txt) return norm(txt);
+
+    // Fallback: check aria-label, title, or data-content if visibleText is empty
+    if (el) {
+      try {
+        var aria = el.getAttribute ? (el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("data-content")) : null;
+        if (aria) return norm(aria);
+      } catch (_) {}
+    }
+    return "";
   }
 
   return {

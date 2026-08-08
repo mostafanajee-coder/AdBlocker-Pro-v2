@@ -362,13 +362,23 @@
     }
   }
 
+  var REEL_CTA_TERMS = D.normList([
+    "Learn more", "Shop now", "Sign up", "Install now", "Download", "Play game",
+    "Get offer", "Watch more", "Apply now", "Contact us", "Send message",
+    "Book now", "Open link", "Use app", "Play now",
+    "تعرف على المزيد", "تسوق الآن", "تسجيل", "تثبيت الآن", "تنزيل", "العب الآن",
+    "احصل على العرض", "شاهد المزيد", "قدم الآن", "اتصل بنا", "إرسال رسالة",
+    "احجز الآن", "فتح الرابط", "استخدام التطبيق"
+  ]);
+
   /** Dedicated sweeper for Facebook Reels ads */
   function sweepReelAds() {
     if (!S.adBlock || (!S.fbSponsored && !S.fbSuggested)) return;
-    var isReelsPage = (window.location && window.location.pathname.indexOf("/reel") !== -1);
+    var isReelsPage = (window.location && window.location.pathname.indexOf("/reel") !== -1) ||
+                      document.querySelector('div[scrollable="true"]');
     if (!isReelsPage) return;
 
-    var reelCards = document.querySelectorAll('div[scrollable="true"] > div, div[role="section"]');
+    var reelCards = document.querySelectorAll('div[scrollable="true"] > div, div[role="section"], div[aria-label*="Reel" i]');
     for (var i = 0; i < reelCards.length && i < 30; i++) {
       var card = reelCards[i];
       if (!card || card.__abpHidden) continue;
@@ -376,17 +386,51 @@
       var cr = card.getBoundingClientRect();
       if (cr.width < 100 || cr.height < 100) continue;
 
-      // Check for 'Ad' or 'Sponsored' labels inside this Reel card
-      var text = (card.innerText || "").toLowerCase();
-      if (text.includes("ad") || text.includes("sponsored") || text.includes("ممول") || text.includes("إعلان") || text.includes("learn more") || text.includes("تعرف على المزيد")) {
-        var found = findLabels();
-        for (var j = 0; j < found.length; j++) {
-          var hit = found[j];
-          if (card.contains(hit.el)) {
-            hide(card, hit.kind + "-reel");
+      var isAd = false;
+
+      // 1. Check for ad redirect links
+      if (card.querySelector('a[href*="l.facebook.com/l.php"], a[href*="/ads/about"], a[href*="/ads/"]')) {
+        isAd = true;
+      }
+
+      // 2. Check for explicit ARIA labels on child elements
+      if (!isAd) {
+        var ariaEls = card.querySelectorAll('[aria-label]');
+        for (var a = 0; a < ariaEls.length; a++) {
+          var labelText = norm(ariaEls[a].getAttribute("aria-label"));
+          if (labelText && matchesAny(labelText, SPONSORED)) {
+            isAd = true;
             break;
           }
         }
+      }
+
+      // 3. Check for CTA terms (Call-To-Action buttons exist ONLY on sponsored Reels)
+      if (!isAd) {
+        var fullText = norm(card.innerText || "");
+        if (fullText) {
+          for (var c = 0; c < REEL_CTA_TERMS.length; c++) {
+            if (fullText.indexOf(REEL_CTA_TERMS[c]) !== -1) {
+              isAd = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // 4. Check via visual geometry detector
+      if (!isAd) {
+        var found = findLabels();
+        for (var j = 0; j < found.length; j++) {
+          if (card.contains(found[j].el)) {
+            isAd = true;
+            break;
+          }
+        }
+      }
+
+      if (isAd) {
+        hide(card, "sponsored-reel");
       }
     }
   }
