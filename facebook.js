@@ -141,11 +141,16 @@
     if (el.closest && el.closest('[role="navigation"], nav, header')) return null;
     var n = el, best = null;
 
-    for (var i = 0; i < 22 && n && n.parentElement; i++) {
+    var isReel = (window.location && window.location.pathname.indexOf("/reel") !== -1) ||
+                 (el.closest && el.closest('[scrollable="true"], [aria-label*="Reel" i], [data-pagelet*="Reel" i]'));
+
+    var maxW = isReel ? 1400 : COLUMN_MAX;
+
+    for (var i = 0; i < 25 && n && n.parentElement; i++) {
       n = n.parentElement;
       if (n.getAttribute && (n.getAttribute("role") === "navigation" || n.tagName === "NAV" || n.tagName === "HEADER")) break;
       var r = n.getBoundingClientRect();
-      if (r.width > COLUMN_MAX) break;                 // climbed out of the column
+      if (r.width > maxW) break;                 // climbed out of the column / reel
       if (r.width >= COLUMN_MIN && r.height >= POST_MIN_H) best = n;
     }
     return best;
@@ -159,6 +164,16 @@
     if (!el || el.__abpHidden) return false;
     el.__abpHidden = true;
     el.setAttribute("data-abp-blocked", reason);
+
+    // Stop and silence any video playing inside the blocked ad container (critical for Reels)
+    try {
+      var vids = el.querySelectorAll("video");
+      for (var v = 0; v < vids.length; v++) {
+        vids[v].pause();
+        vids[v].muted = true;
+        vids[v].src = "";
+      }
+    } catch (_) {}
 
     // Record the box BEFORE hiding. Once display:none is applied every
     // measurement reads 0x0, which makes after-the-fact diagnosis useless
