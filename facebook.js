@@ -362,18 +362,48 @@
     }
   }
 
+  /** Dedicated sweeper for Facebook Reels ads */
+  function sweepReelAds() {
+    if (!S.adBlock || (!S.fbSponsored && !S.fbSuggested)) return;
+    var isReelsPage = (window.location && window.location.pathname.indexOf("/reel") !== -1);
+    if (!isReelsPage) return;
+
+    var reelCards = document.querySelectorAll('div[scrollable="true"] > div, div[role="section"]');
+    for (var i = 0; i < reelCards.length && i < 30; i++) {
+      var card = reelCards[i];
+      if (!card || card.__abpHidden) continue;
+
+      var cr = card.getBoundingClientRect();
+      if (cr.width < 100 || cr.height < 100) continue;
+
+      // Check for 'Ad' or 'Sponsored' labels inside this Reel card
+      var text = (card.innerText || "").toLowerCase();
+      if (text.includes("ad") || text.includes("sponsored") || text.includes("ممول") || text.includes("إعلان") || text.includes("learn more") || text.includes("تعرف على المزيد")) {
+        var found = findLabels();
+        for (var j = 0; j < found.length; j++) {
+          var hit = found[j];
+          if (card.contains(hit.el)) {
+            hide(card, hit.kind + "-reel");
+            break;
+          }
+        }
+      }
+    }
+  }
+
   function sweep() {
     pending = false;
     try { sweepLabels(); } catch (_) {}
     try { sweepReels(); } catch (_) {}
+    try { sweepReelAds(); } catch (_) {}
   }
 
   function schedule() {
     if (pending) return;
     pending = true;
     var run = function () { sweep(); };
-    if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 600 });
-    else setTimeout(run, 120);
+    if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 400 });
+    else setTimeout(run, 80);
   }
 
 
@@ -391,9 +421,13 @@
       subtree: true
     });
 
-    // Virtualized feed reuses nodes on scroll — re-check periodically
-    window.addEventListener("scroll", schedule, { passive: true });
-    setInterval(function () { seen = new WeakSet(); schedule(); }, 4000);
+    // Capture phase listeners so scrolling inside Reels containers (div[scrollable="true"]) instantly triggers schedule
+    window.addEventListener("scroll", schedule, { passive: true, capture: true });
+    window.addEventListener("wheel", schedule, { passive: true, capture: true });
+    window.addEventListener("keydown", schedule, { passive: true, capture: true });
+    window.addEventListener("touchmove", schedule, { passive: true, capture: true });
+
+    setInterval(function () { seen = new WeakSet(); schedule(); }, 2000);
   }
 
   function boot() {
