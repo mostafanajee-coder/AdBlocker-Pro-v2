@@ -1,0 +1,66 @@
+{
+  "manifest_version": 3,
+  "name": "Ad Blocker Pro",
+  "version": "2.0.0",
+  "description": "Ad blocker with community filter lists, Facebook sponsored-post detection, YouTube ad skipping, anti-adblock evasion and mouse unlocker",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess",
+    "storage",
+    "scripting",
+    "activeTab",
+    "tabs",
+    "alarms"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Ad Blocker Pro"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ads",
+        "enabled": true,
+        "path": "rules_ads.json"
+      },
+      {
+        "id": "tracking",
+        "enabled": false,
+        "path": "rules_tracking.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true
+    },
+    {
+      "matches": [
+        "*://*.facebook.com/*",
+        "*://*.messenger.com/*"
+      ],
+      "js": ["fb-detect.js", "facebook.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.youtube-nocookie.com/*"
+      ],
+      "js": ["youtube.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ]
+}
