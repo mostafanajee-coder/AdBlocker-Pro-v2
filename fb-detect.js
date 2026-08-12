@@ -303,6 +303,33 @@
   /** Convenience: visible text of an element, already normalized. */
   function readLabel(el, env) {
     var txt = visibleText(el, env);
+
+    // SVG <use xlink:href="#SvgId"> resolution
+    // Facebook live obfuscation technique (Aug 2026): Facebook renders "Sponsored" labels
+    // using inline SVG <use> tags referencing <text id="..."> elements in root <defs>.
+    if (el) {
+      try {
+        var uses = el.querySelectorAll ? el.querySelectorAll("use") : [];
+        if (uses && uses.length > 0) {
+          var svgText = "";
+          for (var u = 0; u < uses.length; u++) {
+            var useEl = uses[u];
+            var href = useEl.getAttribute ? (useEl.getAttribute("xlink:href") || useEl.getAttribute("href")) : null;
+            if (href && href.charAt(0) === "#") {
+              var targetId = href.slice(1);
+              var doc = (env && env.doc) || (el.ownerDocument || document);
+              var targetEl = doc.getElementById ? doc.getElementById(targetId) : null;
+              if (targetEl) {
+                var tContent = targetEl.textContent || targetEl.innerText || "";
+                if (tContent) svgText += " " + tContent;
+              }
+            }
+          }
+          if (svgText.trim()) txt = (txt + " " + svgText).trim();
+        }
+      } catch (_) {}
+    }
+
     if (txt) return norm(txt);
 
     // Fallback: check aria-label, title, or data-content if visibleText is empty

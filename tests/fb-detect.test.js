@@ -339,6 +339,23 @@ section("9. Suggested-post labels");
 }
 
 /* ==========================================================================
+ * 12. SVG <use xlink:href="#SvgId"> label obfuscation (live Facebook Aug 2026)
+ * ======================================================================== */
+
+section("12. SVG <use> label obfuscation");
+{
+  const targetText = el("text", {}, { id: "SvgT299" }).append(hiddenTxt("Sponsored"));
+  const envSvg = makeEnv({ SvgT299: targetText });
+
+  const useTag = el("use", {}, { "xlink:href": "#SvgT299" });
+  const svgEl = el("svg").append(useTag);
+  const labelWrapper = el("span").append(svgEl);
+
+  check("resolves SVG <use> referenced target text", D.readLabel(labelWrapper, envSvg), "sponsored");
+  check("SVG <use> label matches SPONSORED", D.matchesAny(D.readLabel(labelWrapper, envSvg), D.SPONSORED), true);
+}
+
+/* ==========================================================================
  * Summary
  * ======================================================================== */
 

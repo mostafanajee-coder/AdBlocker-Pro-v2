@@ -68,13 +68,38 @@ class FakeElement extends FakeNode {
     return s;
   }
 
-  querySelector() { return null; }
-  querySelectorAll() { return []; }
+  getAttribute(k) { return this.attributes[k] !== undefined ? this.attributes[k] : null; }
+  setAttribute(k, v) { this.attributes[k] = String(v); }
+
+  querySelector(tag) {
+    const res = this.querySelectorAll(tag);
+    return res.length > 0 ? res[0] : null;
+  }
+
+  querySelectorAll(tag) {
+    const out = [];
+    const targetTag = tag ? tag.toUpperCase() : null;
+    (function walk(n) {
+      for (const c of n.childNodes) {
+        if (c.nodeType === 1) {
+          if (!targetTag || c.tagName === targetTag) out.push(c);
+          walk(c);
+        }
+      }
+    })(this);
+    return out;
+  }
 }
 
 /* --- factories -------------------------------------------------------- */
 
-const el  = (tag, style) => new FakeElement(tag, style);
+const el  = (tag, style, attrs) => {
+  const e = new FakeElement(tag, style);
+  if (attrs) {
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+  }
+  return e;
+};
 const clipBox = (style, box) => new FakeElement("div", style, box);
 const txt = (text, x, y, w, h) =>
   new FakeText(text, { x: x || 0, y: y || 0, w: w === undefined ? 8 : w, h: h === undefined ? 12 : h });
@@ -84,8 +109,13 @@ const hiddenTxt = (text) => new FakeText(text, { x: 0, y: 0, w: 0, h: 0 });
 
 /* --- the environment handed to ABPDetect ------------------------------ */
 
-function makeEnv() {
+function makeEnv(elementsById) {
+  const registry = elementsById || {};
   const doc = {
+    getElementById(id) {
+      return registry[id] || null;
+    },
+
     createTreeWalker(root, whatToShow) {
       const out = [];
       (function walk(n) {
